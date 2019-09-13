@@ -72,5 +72,4 @@ WORKDIR /usr/src/app
 
 COPY main.js /usr/src/app
 EXPOSE 8081
-
-CMD [ "node main.js" ]
+CMD [ node main.js ]
