@@ -1,0 +1,21 @@
+version: 3.2
+
+services:
+
+  nodeapp1:
+    build: ./nodeApp
+    environment:
+      NAME_CONTAINER: ONE
+
+  nodeapp2:
+    build: ./nodeApp
+    environment:
+      NAME_CONTAINER: TWO
+
+  nodeapp2:
+    build: ./nginx
+    links:
+          - nodeapp1
+          - nodeapp2
+    ports:
+          - '8080:8080'
