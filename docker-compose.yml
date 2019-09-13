@@ -1,4 +1,4 @@
-version: 3.2
+version: "3.2"
 
 services:
 
@@ -12,7 +12,7 @@ services:
     environment:
       NAME_CONTAINER: TWO
 
-  nodeapp2:
+  nginx:
     build: ./nginx
     links:
           - nodeapp1
