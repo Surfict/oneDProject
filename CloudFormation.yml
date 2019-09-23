@@ -569,7 +569,8 @@ Resources:
                   exec > /tmp/part-001.log 2>&1
                   docker run --rm -v $HOME:/root -v $(pwd):/git alpine/git clone https://github.com/Surfict/oneDProject.git
                   cd oneDot/nodeApp
-                  docker load < nodeapp1.tar
+                  docker load < nodeapp.tar
+                  docker run --rm nodeApp -p 8081:8081
                   
   EC2Node2Host:
     Type: 'AWS::EC2::Instance'
