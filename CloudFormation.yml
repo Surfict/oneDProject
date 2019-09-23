@@ -567,9 +567,10 @@ Resources:
                   wait-for-docker
                   cd /home/rancher
                   exec > /tmp/part-001.log 2>&1
-                  mkdir test
                   docker run --rm -v $HOME:/root -v $(pwd):/git alpine/git clone https://github.com/Surfict/oneDProject.git
-                  docker build -t node/prod  --build-arg NAME_CONTAINER=one .
+                  cd oneDot/nodeApp
+                  docker load < nodeapp1.tar
+                  
   EC2Node2Host:
     Type: 'AWS::EC2::Instance'
     DependsOn: GatewayToInternet
