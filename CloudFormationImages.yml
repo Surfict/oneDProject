@@ -557,7 +557,7 @@ Resources:
                   exec > /tmp/part-001.log 2>&1
                   docker run --rm -v $HOME:/root -v $(pwd):/git alpine/git clone https://github.com/Surfict/oneDProject.git
                   cd oneDProject/nodeApp
-                  docker build -t nodeserv .
+                  docker load < nodeserv.tar
                   docker run -d -e "NAME_CONTAINER=ONE" --rm -p 8081:8081 nodeserv
                   
   EC2Node2Host:
@@ -589,7 +589,7 @@ Resources:
                   exec > /tmp/part-001.log 2>&1
                   docker run --rm -v $HOME:/root -v $(pwd):/git alpine/git clone https://github.com/Surfict/oneDProject.git
                   cd oneDProject/nodeApp
-                  docker build -t nodeserv .
+                  docker load < nodeserv.tar
                   docker run -d -e "NAME_CONTAINER=TWO" --rm -p 8081:8081 nodeserv
 
 
