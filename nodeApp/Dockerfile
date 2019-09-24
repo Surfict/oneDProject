@@ -71,5 +71,7 @@ RUN apk add --no-cache --virtual .build-deps-yarn curl gnupg tar \
 WORKDIR /usr/src/app
 
 COPY src/main.js /usr/src/app
+RUN chown -R node:node /usr/src/app
+USER node
 EXPOSE 8081
 CMD [ "node", "main.js" ]
