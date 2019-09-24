@@ -4,6 +4,9 @@ Description: >-
   showing how to create a VPC with DNS and Public IPs enabled. You will be
   billed for the AWS resources used if you create a stack from this template.
 Parameters:
+  KeyPair: 
+    Description: Amazon EC2 Key Pair used to connect to the instances launched by the CloudFormation script
+    Type: "AWS::EC2::KeyPair::KeyName"
   SSHLocation:
     Description: >-
       Lockdown SSH access to the bastion host (default can be accessed from
@@ -80,8 +83,6 @@ Mappings:
       CIDR: 10.0.0.0/16
     Public:
       CIDR: 10.0.0.0/28
-    Private:
-      CIDR: 10.0.1.0/24
   AWSInstanceType2Arch:
     t1.micro:
       Arch: HVM64
@@ -382,19 +383,6 @@ Resources:
           Value: !Ref 'AWS::StackName'
         - Key: Network
           Value: Public
-  PrivateSubnet:
-    Type: 'AWS::EC2::Subnet'
-    Properties:
-      VpcId: !Ref VPC
-      CidrBlock: !FindInMap 
-        - SubnetConfig
-        - Private
-        - CIDR
-      Tags:
-        - Key: Application
-          Value: !Ref 'AWS::StackName'
-        - Key: Network
-          Value: Private
   InternetGateway:
     Type: 'AWS::EC2::InternetGateway'
     Properties:
@@ -503,12 +491,13 @@ Resources:
     Properties:
       SubnetId: !Ref PublicSubnet
       NetworkAclId: !Ref PublicNetworkAcl
+
   EC2NGINXHost:
     Type: 'AWS::EC2::Instance'
     DependsOn: GatewayToInternet
     Properties:
       InstanceType: !Ref EC2InstanceType
-      KeyName: '1'
+      KeyName: !Ref KeyPair
       ImageId: ami-00863d13761ef3724
       UserData:
         Fn::Base64: !Sub
@@ -524,14 +513,14 @@ Resources:
                   wait-for-docker
                   cd /home/rancher
                   exec > /tmp/part-001.log 2>&1
-                  mkdir test
                   docker run --rm -v $HOME:/root -v $(pwd):/git alpine/git clone https://github.com/Surfict/oneDProject.git
-                  sed -i -e s/nodeapp1/${ipnode}/g /home/rancher/oneDProject/nginx/nginx.conf
-                  sed -i -e s/nodeapp2/${ipnode}/g /home/rancher/oneDProject/nginx/nginx.conf
+                  sed -i -e s/nodeapp1/${ipnode1}/g /home/rancher/oneDProject/nginx/nginx.conf
+                  sed -i -e s/nodeapp2/${ipnode2}/g /home/rancher/oneDProject/nginx/nginx.conf
+                  cd oneDProject/nginx
                   docker build -t nginx/prod .
-                  docker run nginx/prod
-          - ipnode: !GetAtt EC2Node1Host.PrivateIp
-          - ipnode: !GetAtt EC2Node2Host.PrivateIp
+                  docker run -p 80:8080 -d nginx/prod
+          - ipnode1: !GetAtt EC2Node1Host.PrivateIp
+            ipnode2: !GetAtt EC2Node2Host.PrivateIp
       NetworkInterfaces:
         - GroupSet:
             - !Ref EC2SecurityGroupLoadBalancer
@@ -541,14 +530,13 @@ Resources:
           SubnetId: !Ref PublicSubnet
   EC2Node1Host:
     Type: 'AWS::EC2::Instance'
-    DependsOn: GatewayToInternet
     Properties:
       InstanceType: !Ref EC2InstanceType
-      KeyName: '1'
+      KeyName: !Ref KeyPair
       ImageId: ami-00863d13761ef3724
       NetworkInterfaces:
         - GroupSet:
-            - !Ref EC2SecurityGroupLoadBalancer
+            - !Ref EC2SecurityNodeServer
           AssociatePublicIpAddress: 'true'
           DeviceIndex: '0'
           DeleteOnTermination: 'true'
@@ -568,20 +556,19 @@ Resources:
                   cd /home/rancher
                   exec > /tmp/part-001.log 2>&1
                   docker run --rm -v $HOME:/root -v $(pwd):/git alpine/git clone https://github.com/Surfict/oneDProject.git
-                  cd oneDot/nodeApp
-                  docker load < nodeapp.tar
-                  docker run --rm nodeApp -p 8081:8081
+                  cd oneDProject/nodeApp
+                  docker load < nodeserv.tar
+                  docker run -d -e "NAME_CONTAINER=ONE" --rm -p 8081:8081 nodeserv
                   
   EC2Node2Host:
     Type: 'AWS::EC2::Instance'
-    DependsOn: GatewayToInternet
     Properties:
       InstanceType: !Ref EC2InstanceType
-      KeyName: '1'
+      KeyName: !Ref KeyPair
       ImageId: ami-00863d13761ef3724
       NetworkInterfaces:
         - GroupSet:
-            - !Ref EC2SecurityGroupLoadBalancer
+            - !Ref EC2SecurityNodeServer
           AssociatePublicIpAddress: 'true'
           DeviceIndex: '0'
           DeleteOnTermination: 'true'
@@ -600,9 +587,10 @@ Resources:
                   wait-for-docker
                   cd /home/rancher
                   exec > /tmp/part-001.log 2>&1
-                  mkdir test
                   docker run --rm -v $HOME:/root -v $(pwd):/git alpine/git clone https://github.com/Surfict/oneDProject.git
-                  docker build --build-arg NAME_CONTAINER=two .
+                  cd oneDProject/nodeApp
+                  docker load < nodeserv.tar
+                  docker run -d -e "NAME_CONTAINER=TWO" --rm -p 8081:8081 nodeserv
 
 
   EC2SecurityGroupLoadBalancer:
@@ -615,6 +603,21 @@ Resources:
           FromPort: '22'
           ToPort: '22'
           CidrIp: !Ref SSHLocation
+        - IpProtocol: tcp
+          FromPort: '80'
+          ToPort: '80'
+          CidrIp: !Ref SSHLocation
+
+  EC2SecurityNodeServer:
+    Type: 'AWS::EC2::SecurityGroup'
+    Properties:
+      GroupDescription: Enable access to the EC2 host
+      VpcId: !Ref VPC
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: '8081'
+          ToPort: '8081'
+          SourceSecurityGroupId: !Ref EC2SecurityGroupLoadBalancer
 Outputs:
   VPCId:
     Description: VPCId of the newly created VPC
